@@ -64,6 +64,9 @@ Keep the tone consistent with the selected setting.
 `;
 
 // POST /aetherium-turn: Accepts { history: [...], user_input: "..." }
+//
+// Zero-shot prompting is supported: If you send only { user_input: "..." } (with history omitted or empty),
+// the Sage will respond as if it's the first turn, using only the system prompt and your input.
 app.post('/aetherium-turn', async (req, res) => {
 	try {
 		const { history = [], user_input = '' } = req.body;
