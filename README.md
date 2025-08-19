@@ -98,5 +98,3 @@ Sage: The stranger looks up, embers flickering in their eyes. "Not all who wande
 > _The adventure is yours to shape. Every word, every choice, every moment._
 
 ---
-
-**[Start Playing Now!](#)**
