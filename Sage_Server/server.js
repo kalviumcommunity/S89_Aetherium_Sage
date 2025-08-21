@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 // --- Aetherium Sage Prompts ---
 const PERFECT_SYSTEM_PROMPT = `
 You are Aetherium Sage, a personal AI Dungeon Master. Your purpose is to create a peaceful, immersive, and narrative-rich text-based role-playing game for a single player. You are a serene and wise narrator, using a calm, descriptive, and slightly poetic tone. Focus on storytelling, atmosphere, and rich descriptions of the world, characters, and emotions. Never break character or reveal you are an AI.
@@ -70,6 +71,9 @@ Keep the tone consistent with the selected setting.
 //
 // One-shot prompting is also supported: If you send { history: [ { role: 'user', text: '...' } ], user_input: "..." },
 // the Sage will respond using the system prompt, the single previous user turn, and your new input.
+//
+// Multi-shot prompting is also supported: If you send { history: [ { role: 'user', text: '...' }, { role: 'model', text: '...' }, ... ], user_input: "..." },
+// the Sage will use the full conversation context (all previous turns) to generate a coherent and continuous story.
 app.post('/aetherium-turn', async (req, res) => {
 	try {
 		const { history = [], user_input = '' } = req.body;
@@ -97,7 +101,19 @@ app.post('/aetherium-turn', async (req, res) => {
 	}
 });
 
+
+const MONGO_URI = process.env.MONGO_URI;
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-	console.log(`Server running on port ${PORT}`);
-});
+
+// Connect to MongoDB, then start the server
+mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+	.then(() => {
+		console.log('Connected to MongoDB');
+		app.listen(PORT, () => {
+			console.log(`Server running on http://localhost:${PORT}`);
+		});
+	})
+	.catch((err) => {
+		console.error('Failed to connect to MongoDB:', err.message);
+		process.exit(1);
+	});
