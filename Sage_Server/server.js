@@ -76,12 +76,19 @@ Keep the tone consistent with the selected setting.
 // the Sage will use the full conversation context (all previous turns) to generate a coherent and continuous story.
 // Dynamic prompting is supported: You can send a custom system_prompt in the request body.
 // If not provided, the default SYSTEM_PROMPT will be used.
+// Chain of thought prompting is supported: If you send { chain_of_thought: true } in the request body,
+// the Sage will first reason step by step before narrating the outcome.
 app.post('/aetherium-turn', async (req, res) => {
 	try {
-		const { history = [], user_input = '', system_prompt } = req.body;
+		const { history = [], user_input = '', system_prompt, chain_of_thought = false } = req.body;
 
-		// Use custom system prompt if provided, else default
-		const effectiveSystemPrompt = system_prompt || SYSTEM_PROMPT;
+		// If chain_of_thought is true, prepend a reasoning instruction to the system prompt
+		let effectiveSystemPrompt = system_prompt || SYSTEM_PROMPT;
+		if (chain_of_thought) {
+			effectiveSystemPrompt =
+				'Before narrating the outcome, think step by step and explain your reasoning as the Aetherium Sage, then continue the story.\n' +
+				effectiveSystemPrompt;
+		}
 
 		// Build conversation for Gemini: system prompt, then history, then user input
 		const contents = [
