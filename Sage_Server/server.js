@@ -1,3 +1,16 @@
+/*
+Evaluation Pipeline Setup (for video explanation):
+
+- A dataset of 5+ test samples is defined in eval.js, each with a user input, optional history, and an expected key detail.
+- The judge prompt compares the model's output to the expected result, considering:
+	- Relevance to user input
+	- Inclusion of the expected detail
+	- Maintenance of narrative, descriptive style
+	- Strictness about key details, but allowance for creative language
+- The pipeline calls the /aetherium-turn endpoint for each test case, then uses a judge prompt (and a simple string check) to PASS/FAIL each output.
+- To run all test cases: node Sage_Server/eval.js
+- This setup allows for easy extension to more advanced automated or LLM-based judging in the future.
+*/
 const mongoose = require('mongoose');
 // --- Aetherium Sage Prompts ---
 const PERFECT_SYSTEM_PROMPT = `
