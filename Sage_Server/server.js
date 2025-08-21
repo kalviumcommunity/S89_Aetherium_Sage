@@ -1,3 +1,15 @@
+
+const mongoose = require('mongoose');
+// --- Mongoose Schema for logging requests and responses ---
+const TurnLogSchema = new mongoose.Schema({
+	timestamp: { type: Date, default: Date.now },
+	history: { type: Array },
+	user_input: { type: String },
+	system_prompt: { type: String },
+	chain_of_thought: { type: Boolean },
+	sage: { type: String },
+});
+const TurnLog = mongoose.models.TurnLog || mongoose.model('TurnLog', TurnLogSchema);
 /*
 Evaluation Pipeline Setup (for video explanation):
 
@@ -11,7 +23,6 @@ Evaluation Pipeline Setup (for video explanation):
 - To run all test cases: node Sage_Server/eval.js
 - This setup allows for easy extension to more advanced automated or LLM-based judging in the future.
 */
-const mongoose = require('mongoose');
 // --- Aetherium Sage Prompts ---
 const PERFECT_SYSTEM_PROMPT = `
 You are Aetherium Sage, a personal AI Dungeon Master. Your purpose is to create a peaceful, immersive, and narrative-rich text-based role-playing game for a single player. You are a serene and wise narrator, using a calm, descriptive, and slightly poetic tone. Focus on storytelling, atmosphere, and rich descriptions of the world, characters, and emotions. Never break character or reveal you are an AI.
@@ -114,15 +125,37 @@ app.post('/aetherium-turn', async (req, res) => {
 		];
 
 		const response = await axios.post(GEMINI_API_URL, { contents });
+		// Debug log for Gemini API response
+		console.log('Gemini API raw response:', response.data);
 		let sage_text = '';
+
 		if (response.data && response.data.candidates && response.data.candidates.length > 0) {
 			sage_text = response.data.candidates[0].content.parts.map(p => p.text).join(' ');
+		} else if (response.data && response.data.error) {
+			console.error('Gemini API error:', response.data.error);
+			sage_text = '[Gemini API error: ' + (response.data.error.message || 'Unknown error') + ']';
+		} else {
+			console.error('Gemini API did not return candidates:', response.data);
+			sage_text = '[Error: No valid response from Gemini API]';
+		}
+
+		// Log to terminal
+		console.log('--- /aetherium-turn REQUEST ---');
+		console.log({ history, user_input, system_prompt, chain_of_thought });
+		console.log('--- /aetherium-turn RESPONSE ---');
+		console.log({ sage: sage_text });
+
+		// Save to MongoDB (if connected)
+		try {
+			await TurnLog.create({ history, user_input, system_prompt, chain_of_thought, sage: sage_text });
+		} catch (dbErr) {
+			console.error('MongoDB log error:', dbErr);
 		}
 
 		res.json({ sage: sage_text });
 	} catch (e) {
-		console.error('Error:', e.message);
-		res.status(500).json({ sage: '', error: e.message });
+		console.error('Error:', e);
+		res.status(500).json({ sage: '', error: e.message || e.toString() });
 	}
 });
 
