@@ -74,13 +74,18 @@ Keep the tone consistent with the selected setting.
 //
 // Multi-shot prompting is also supported: If you send { history: [ { role: 'user', text: '...' }, { role: 'model', text: '...' }, ... ], user_input: "..." },
 // the Sage will use the full conversation context (all previous turns) to generate a coherent and continuous story.
+// Dynamic prompting is supported: You can send a custom system_prompt in the request body.
+// If not provided, the default SYSTEM_PROMPT will be used.
 app.post('/aetherium-turn', async (req, res) => {
 	try {
-		const { history = [], user_input = '' } = req.body;
+		const { history = [], user_input = '', system_prompt } = req.body;
+
+		// Use custom system prompt if provided, else default
+		const effectiveSystemPrompt = system_prompt || SYSTEM_PROMPT;
 
 		// Build conversation for Gemini: system prompt, then history, then user input
 		const contents = [
-			{ role: 'model', parts: [{ text: SYSTEM_PROMPT }] },
+			{ role: 'model', parts: [{ text: effectiveSystemPrompt }] },
 			...history.map(turn => ({
 				role: turn.role,
 				parts: [{ text: turn.text }]
