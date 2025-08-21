@@ -107,12 +107,21 @@ const PORT = process.env.PORT || 3000;
 
 // Connect to MongoDB, then start the server
 	// Validate env
+	// If MONGO_URI is missing, allow degraded mode if ALLOW_DEGRADED_MODE is set, else exit
 	if (!MONGO_URI) {
-		console.error('FATAL: MONGO_URI environment variable is not set. Please add it to your .env file.');
-		process.exit(1);
+		if (process.env.ALLOW_DEGRADED_MODE === 'true') {
+			console.warn('Warning: MONGO_URI is not set. Starting server in degraded mode (no DB).');
+			app.listen(PORT, () => {
+				console.log(`Server running in degraded mode on http://localhost:${PORT}`);
+			});
+		} else {
+			console.error('FATAL: MONGO_URI environment variable is not set. Set ALLOW_DEGRADED_MODE=true to allow startup without DB.');
+			process.exit(1);
+		}
+		return;
 	}
 
-	// MongoDB connection with retry/backoff
+	// MongoDB connection with retry/backoff (no deprecated options)
 	const MAX_RETRIES = 5;
 	const RETRY_DELAY_MS = 3000;
 	let retries = 0;
@@ -124,7 +133,7 @@ const PORT = process.env.PORT || 3000;
 	}
 
 	function connectWithRetry() {
-		mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+		mongoose.connect(MONGO_URI)
 			.then(() => {
 				console.log('Connected to MongoDB');
 				startServer();
