@@ -106,14 +106,40 @@ const MONGO_URI = process.env.MONGO_URI;
 const PORT = process.env.PORT || 3000;
 
 // Connect to MongoDB, then start the server
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-	.then(() => {
-		console.log('Connected to MongoDB');
+	// Validate env
+	if (!MONGO_URI) {
+		console.error('FATAL: MONGO_URI environment variable is not set. Please add it to your .env file.');
+		process.exit(1);
+	}
+
+	// MongoDB connection with retry/backoff
+	const MAX_RETRIES = 5;
+	const RETRY_DELAY_MS = 3000;
+	let retries = 0;
+
+	function startServer() {
 		app.listen(PORT, () => {
 			console.log(`Server running on http://localhost:${PORT}`);
 		});
-	})
-	.catch((err) => {
-		console.error('Failed to connect to MongoDB:', err.message);
-		process.exit(1);
-	});
+	}
+
+	function connectWithRetry() {
+		mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+			.then(() => {
+				console.log('Connected to MongoDB');
+				startServer();
+			})
+			.catch((err) => {
+				retries++;
+				console.error(`MongoDB connection failed (attempt ${retries}):`, err.message);
+				if (retries < MAX_RETRIES) {
+					console.log(`Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
+					setTimeout(connectWithRetry, RETRY_DELAY_MS);
+				} else {
+					console.error('Max MongoDB connection attempts reached. Starting server in degraded mode (no DB).');
+					startServer();
+				}
+			});
+	}
+
+	connectWithRetry();
