@@ -1,0 +1,19 @@
+{
+  "name": "aetherium-sage-server",
+  "version": "1.0.0",
+  "main": "Sage_Server/server.js",
+  "scripts": {
+    "start": "node Sage_Server/server.js",
+    "dev": "nodemon Sage_Server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5",
+    "mongoose": "^8.3.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

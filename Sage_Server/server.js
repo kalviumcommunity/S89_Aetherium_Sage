@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 // --- Aetherium Sage Prompts ---
 const PERFECT_SYSTEM_PROMPT = `
 You are Aetherium Sage, a personal AI Dungeon Master. Your purpose is to create a peaceful, immersive, and narrative-rich text-based role-playing game for a single player. You are a serene and wise narrator, using a calm, descriptive, and slightly poetic tone. Focus on storytelling, atmosphere, and rich descriptions of the world, characters, and emotions. Never break character or reveal you are an AI.
@@ -70,6 +71,9 @@ Keep the tone consistent with the selected setting.
 //
 // One-shot prompting is also supported: If you send { history: [ { role: 'user', text: '...' } ], user_input: "..." },
 // the Sage will respond using the system prompt, the single previous user turn, and your new input.
+//
+// Multi-shot prompting is also supported: If you send { history: [ { role: 'user', text: '...' }, { role: 'model', text: '...' }, ... ], user_input: "..." },
+// the Sage will use the full conversation context (all previous turns) to generate a coherent and continuous story.
 app.post('/aetherium-turn', async (req, res) => {
 	try {
 		const { history = [], user_input = '' } = req.body;
@@ -97,7 +101,54 @@ app.post('/aetherium-turn', async (req, res) => {
 	}
 });
 
+
+const MONGO_URI = process.env.MONGO_URI;
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-	console.log(`Server running on port ${PORT}`);
-});
+
+// Connect to MongoDB, then start the server
+	// Validate env
+	// If MONGO_URI is missing, allow degraded mode if ALLOW_DEGRADED_MODE is set, else exit
+	if (!MONGO_URI) {
+		if (process.env.ALLOW_DEGRADED_MODE === 'true') {
+			console.warn('Warning: MONGO_URI is not set. Starting server in degraded mode (no DB).');
+			app.listen(PORT, () => {
+				console.log(`Server running in degraded mode on http://localhost:${PORT}`);
+			});
+		} else {
+			console.error('FATAL: MONGO_URI environment variable is not set. Set ALLOW_DEGRADED_MODE=true to allow startup without DB.');
+			process.exit(1);
+		}
+		return;
+	}
+
+	// MongoDB connection with retry/backoff (no deprecated options)
+	const MAX_RETRIES = 5;
+	const RETRY_DELAY_MS = 3000;
+	let retries = 0;
+
+	function startServer() {
+		app.listen(PORT, () => {
+			console.log(`Server running on http://localhost:${PORT}`);
+		});
+	}
+
+	function connectWithRetry() {
+		mongoose.connect(MONGO_URI)
+			.then(() => {
+				console.log('Connected to MongoDB');
+				startServer();
+			})
+			.catch((err) => {
+				retries++;
+				console.error(`MongoDB connection failed (attempt ${retries}):`, err.message);
+				if (retries < MAX_RETRIES) {
+					console.log(`Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
+					setTimeout(connectWithRetry, RETRY_DELAY_MS);
+				} else {
+					console.error('Max MongoDB connection attempts reached. Starting server in degraded mode (no DB).');
+					startServer();
+				}
+			});
+	}
+
+	connectWithRetry();
